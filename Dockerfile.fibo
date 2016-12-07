@@ -1,0 +1,7 @@
+FROM golang
+
+RUN go get github.com/yuichi1004/grpc-experiments/fibo_server
+RUN go install github.com/yuichi1004/grpc-experiments/fibo_server
+ENTRYPOINT /go/bin/fibo_server
+
+EXPOSE 443

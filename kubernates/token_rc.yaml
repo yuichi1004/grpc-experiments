@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: token
+spec:
+  replicas: 2
+  selector:
+    app: token
+  template:
+    metadata:
+      name: token
+      labels:
+        app: token
+    spec:
+      volumes:
+      - name: "creds"
+        secret:
+          secretName: "creds"
+          items:
+          - key: "tokencert.pem"
+            path: "tokencert.pem"
+          - key: "tokenkey.pem"
+            path: "tokenkey.pem"
+      containers:
+      - name: token
+        image: gcr.io/hoge-jp/token
+        env:
+        - name: TOKEN_SERVER_PORT
+          value: ":443"
+        - name: TOKEN_CERT_PATH
+          value: "/etc/creds/tokencert.pem"
+        - name: TOKEN_KEY_PATH
+          value: "/etc/creds/tokenkey.pem"
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: "creds"
+          mountPath: "/etc/creds"
+          readOnly: true

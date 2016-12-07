@@ -2,60 +2,81 @@ package main
 
 import (
 	"log"
+	"os"
 
-	pb "github.com/yuichi1004/grpc-experiments/fibo"
+	"github.com/yuichi1004/grpc-experiments/fibo"
+	"github.com/yuichi1004/grpc-experiments/token"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-const (
-	address = "fibo.example.com:50051"
+var (
+	TokenAddress string
+	FiboAddress  string
+	CAPath       string
 )
 
 func init() {
-}
-
-func GenToken() string {
-	return "XXXX"
+	TokenAddress = os.Getenv("TOKEN_SERVER_ADDR")
+	FiboAddress = os.Getenv("FIBO_SERVER_ADDR")
+	CAPath = os.Getenv("CA_CERT_PATH")
 }
 
 func main() {
-	ca, err := credentials.NewClientTLSFromFile("../creds/ca/cacert.pem", "fibo.example.com")
+	ctx := context.Background()
+
+	ca, err := credentials.NewClientTLSFromFile(CAPath, "")
 	if err != nil {
 		panic(err)
 	}
 
-	// Set up a connection to the server.
-	conn, err := grpc.Dial(address,
+	// Get token
+	tokenConn, err := grpc.Dial(TokenAddress,
 		grpc.WithTransportCredentials(ca),
-		grpc.WithPerRPCCredentials(JWTCreds{}),
 	)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
-	defer conn.Close()
-	c := pb.NewFibonacciClient(conn)
+	defer tokenConn.Close()
+	tokenClient := token.NewTokenClient(tokenConn)
+	resp, err := tokenClient.GetToken(ctx, &token.TokenRequest{Subject: "me", Scope: []string{"fibo"}})
+	if err != nil {
+		panic(err)
+	}
 
-	// Contact the server and print out its response.
+	// Connect to fibo server
+	fiboConn, err := grpc.Dial(FiboAddress,
+		grpc.WithTransportCredentials(ca),
+		grpc.WithPerRPCCredentials(TokenCreds{resp.Token}),
+	)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer fiboConn.Close()
+	fiboClient := fibo.NewFibonacciClient(fiboConn)
+
+	// Calc fibonacci series
 	for i := 0; i < 20; i++ {
-		r, err := c.GetN(context.Background(), &pb.FibonacciRequest{N: int64(i)})
+		r, err := fiboClient.GetN(ctx, &fibo.FibonacciRequest{N: int64(i)})
 		if err != nil {
-			log.Fatalf("could not greet: %v", err)
+			log.Fatalf("could not get fibo: %v", err)
 		}
 		log.Printf("Result: %d, %d", i, r.Result)
 	}
 }
 
-type JWTCreds struct {
+// Token credentials
+type TokenCreds struct {
+	Token string
 }
 
-func (_ JWTCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+func (cred TokenCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	return map[string]string{
-		"authorization": "Bearer " + GenToken(),
+		"authorization": cred.Token,
 	}, nil
 }
 
-func (_ JWTCreds) RequireTransportSecurity() bool {
+func (_ TokenCreds) RequireTransportSecurity() bool {
 	return false
 }

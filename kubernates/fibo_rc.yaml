@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: fibo
+spec:
+  replicas: 2
+  selector:
+    app: fibo
+  template:
+    metadata:
+      name: fibo
+      labels:
+        app: fibo
+    spec:
+      volumes:
+      - name: "creds"
+        secret:
+          secretName: "creds"
+          items:
+          - key: "fibocert.pem"
+            path: "fibocert.pem"
+          - key: "fibokey.pem"
+            path: "fibokey.pem"
+      containers:
+      - name: fibo
+        image: gcr.io/hoge-jp/fibo
+        env:
+        - name: FIBO_SERVER_PORT
+          value: ":443"
+        - name: FIBO_CERT_PATH
+          value: "/etc/creds/fibocert.pem"
+        - name: FIBO_KEY_PATH
+          value: "/etc/creds/fibokey.pem"
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: "creds"
+          mountPath: "/etc/creds"
+          readOnly: true
