@@ -1,0 +1,2 @@
+V	261205063946Z		01	unknown	/C=JP/ST=Tokyo/O=Example Company/CN=token.example.com
+V	261205064110Z		02	unknown	/C=JP/ST=Tokyo/O=Example Company/CN=fibo.example.com

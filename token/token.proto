@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+service Token {
+    rpc GetToken (TokenRequest) returns (TokenReply) {}
+}
+
+message TokenRequest {
+    string subject = 1;
+    repeated string scope = 2;
+}
+
+message TokenReply {
+    string token = 1;
+}
