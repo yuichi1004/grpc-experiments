@@ -1,0 +1,13 @@
+package: github.com/yuichi1004/grpc-experiments
+import:
+- package: github.com/golang/protobuf
+  subpackages:
+  - proto
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+  version: ^1.0.5
+  subpackages:
+  - credentials
+  - metadata

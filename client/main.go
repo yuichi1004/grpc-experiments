@@ -2,47 +2,33 @@ package main
 
 import (
 	"log"
-	"io/ioutil"
-	"time"
 
+	pb "github.com/yuichi1004/grpc-experiments/fibo"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	jwt "github.com/dgrijalva/jwt-go"
-	pb "github.com/yuichi1004/grpc-experiments/fibo"
 )
 
 const (
-	address     = "localhost:50051"
-)
-
-var (
-	privateKey []byte
+	address = "fibo.example.com:50051"
 )
 
 func init() {
-	privateKey, _ = ioutil.ReadFile("../creds/demo.rsa")
 }
 
 func GenToken() string {
-	token := jwt.New(jwt.GetSigningMethod("RS256"))
-	token.Claims["exp"] = time.Now().Unix() + 36000
-	tokenString, err := token.SignedString(privateKey)
-	if err != nil {
-		panic(err)
-	}
-	return tokenString
+	return "XXXX"
 }
 
 func main() {
-	cred, err := credentials.NewClientTLSFromFile("../creds/server.crt", "localhost")
+	ca, err := credentials.NewClientTLSFromFile("../creds/ca/cacert.pem", "fibo.example.com")
 	if err != nil {
 		panic(err)
 	}
 
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address,
-		grpc.WithTransportCredentials(cred),
+		grpc.WithTransportCredentials(ca),
 		grpc.WithPerRPCCredentials(JWTCreds{}),
 	)
 	if err != nil {
@@ -52,7 +38,7 @@ func main() {
 	c := pb.NewFibonacciClient(conn)
 
 	// Contact the server and print out its response.
-	for i := 0; i < 20; i ++ {
+	for i := 0; i < 20; i++ {
 		r, err := c.GetN(context.Background(), &pb.FibonacciRequest{N: int64(i)})
 		if err != nil {
 			log.Fatalf("could not greet: %v", err)
@@ -65,12 +51,11 @@ type JWTCreds struct {
 }
 
 func (_ JWTCreds) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	return map[string]string {
+	return map[string]string{
 		"authorization": "Bearer " + GenToken(),
-	},nil
+	}, nil
 }
 
 func (_ JWTCreds) RequireTransportSecurity() bool {
 	return false
 }
-
